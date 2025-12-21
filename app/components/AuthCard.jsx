@@ -98,8 +98,8 @@ const AuthCard = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          scopes: "email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send",
-          redirectTo: window.location.origin,
+          scopes: "email profile",
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: { access_type: 'offline', prompt: 'consent' },
         },
       });

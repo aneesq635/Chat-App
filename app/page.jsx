@@ -1,8 +1,20 @@
+'use client'
 import Image from "next/image";
 import Footer from "./components/Footer";
 import HeroSection from "./components/HeroSection";
+import supabase from "./components/supabase";
+import { useRouter } from "next/navigation";
 
+import { useAuth } from "./components/AuthContext";
 export default function Home() {
+  const router = useRouter();
+ const {user} = useAuth()
+  console.log("Session on Home Page:", user);
+  if(user) {
+    router.push('/MainApp');
+    return null;
+  }
+
   return (
      <div className="min-h-screen flex flex-col  overflow-x-hidden">
       {/* Background decoration */}
