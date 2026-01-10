@@ -35,6 +35,8 @@ export async function POST(request) {
       createdAt: new Date(),
       bio: "Hey there! I am using NexTalk.",
       status: "", // e.g., "Online", "Offline"
+      socketId: "socket_id_xyz", 
+      lastSeen: new Date(),
     };
     await usersCollection.insertOne(newUser);
     return NextResponse.json(

@@ -8,15 +8,25 @@ import {
   Share,
   MoreVertical,
   MessageCircle,
-
+  Edit,
+  Bookmark,
+  X,
 } from "lucide-react";
+import { useAuth } from "./AuthContext";
 
 const ProfileScreen = ({ user, onClose, onStartChat }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
-  console.log("ProfileScreen user prop:", user.id);
+  console.log("ProfileScreen user prop:", user);
+  const input = user?.supabaseId || user?.id;
+  const localUser = useAuth().user;
+  console.log("Local authenticated user:", localUser);
+  const [isSaved, setIsSaved] = useState(false);
+  const [showBioModal, setShowBioModal] = useState(false);
+  const [bioInput, setBioInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   // Mock fetching profile data - simulating backend response
   useEffect(() => {
@@ -24,7 +34,7 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
       try {
         setLoading(true);
         // Simulate API delay
-        const data = await fetch(`/api/users/${user.id}`);
+        const data = await fetch(`/api/users/${input}`);
         const profile = await data.json();
         console.log("Fetched profile data:", profile);
         setProfileData(profile);
@@ -38,6 +48,28 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
     fetchProfile();
   }, [user]);
 
+  const handleSaveContact = async () => {
+    if (!profileData) return;
+    try {
+      const savedContacts = await fetch("/api/contacts/save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: localUser.id,
+          contactSupabaseId: profileData.user.supabaseId,
+        }),
+      });
+      if (!savedContacts.ok) {
+        throw new Error("Failed to save contact");
+      }
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    } catch (error) {
+      console.error("Failed to save contact:", error);
+    }
+  };
   const handleCopy = async () => {
     if (!profileData) return;
     try {
@@ -47,6 +79,51 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
     } catch (error) {
       console.error("Failed to copy:", error);
     }
+  };
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+
+      // Format as: Jan 15, 2024
+      const options = { year: "numeric", month: "short", day: "numeric" };
+      return date.toLocaleDateString("en-US", options);
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+  const handleBioSubmit = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/users/${profileData.user.supabaseId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bio: bioInput }),
+      });
+     
+      const result = await response.json();
+      console.log("Bio update response:", result);
+
+      if (response.ok) {
+        // Update the local state or refetch profile data
+        profileData.user.bio = bioInput;
+        setShowBioModal(false);
+      } else {
+        console.error("Failed to update bio");
+      }
+    } catch (error) {
+      console.error("Error updating bio:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const editBio = () => {
+    setBioInput(profileData.user.bio || "");
+    setShowBioModal(true);
   };
 
   const handleShare = async () => {
@@ -137,7 +214,6 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
         </button>
 
         <h1 className="text-slate-800 font-bold text-lg mr-4">Profile</h1>
-
       </div>
 
       <div className="w-full max-w-2xl px-6 pt-4 flex flex-col items-center">
@@ -180,46 +256,117 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
                 @{profileData.user.userId}
               </span>
               <span className="w-1.5 h-1.5 bg-slate-300 rounded-full"></span>
-              {/* <span className="text-slate-400 font-medium text-sm">{profileData.location}</span> */}
+              <span className="text-slate-400 font-medium text-sm">
+                {profileData.user.email}
+              </span>
             </div>
           </div>
 
           {/* Bio Section */}
           {profileData.user.bio ? (
-            <div className="w-full bg-slate-50/50 rounded-3xl p-6 mb-8 border border-slate-100 text-center">
-              <p className="text-slate-600 leading-relaxed font-medium italic">
-                {profileData.user.bio}
-              </p>
-            </div>
-          ) : (
-             <button
-            onClick={() => alert("Add Bio functionality coming soon!")}
-            className="h-14 px-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all hover:scale-[1.02] active:scale-95 flex items-center mb-8 cursor-pointer"
-          >
-            
-            <span>Add Bio</span>
-          </button>
-          )}
+            <>
+              <div className="w-full bg-slate-50/50 rounded-3xl p-6 mb-4 border border-slate-100 text-center">
+                <p className="text-slate-600 leading-relaxed font-medium italic">
+                  {profileData.user.bio}
+                </p>
+              </div>
 
+              {profileData.user.supabaseId === localUser?.id && (
+                <button
+                  onClick={editBio}
+                  className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center cursor-pointer mb-8"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Edit Bio</span>
+                </button>
+              )}
+            </>
+          ) : (
+            <>
+              {profileData.user.supabaseId === localUser?.id && (
+                <button
+                  onClick={editBio}
+                  className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center cursor-pointer mb-8"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  <span>Add Bio</span>
+                </button>
+              )}
+            </>
+          )}
+          {showBioModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-slate-800">
+                    {profileData.user.bio ? "Edit Bio" : "Add Bio"}
+                  </h3>
+                  <button
+                    onClick={() => setShowBioModal(false)}
+                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={bioInput}
+                  onChange={(e) => setBioInput(e.target.value)}
+                  placeholder="Tell us about yourself..."
+                  className="w-full h-32 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-slate-700"
+                  maxLength={200}
+                />
+
+                <div className="text-right text-sm text-slate-400 mb-4">
+                  {bioInput.length}/200
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowBioModal(false)}
+                    className="flex-1 h-11 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleBioSubmit}
+                    disabled={isSaving}
+                    className="flex-1 h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSaving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Stats / Info Badges */}
-          <div className="grid grid-cols-2 gap-4 w-full mb-8">
+          <div
+            className={`grid ${
+              profileData.user.supabaseId !== localUser?.id
+                ? "grid-cols-2"
+                : "grid-cols-1"
+            } gap-4 w-full mb-8`}
+          >
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center">
               <span className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-1">
                 Joined
               </span>
               <span className="text-slate-700 font-bold">
-                {profileData.user.createdAt}
+                {formatDate(profileData.user.createdAt)}
               </span>
             </div>
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center">
-              <span className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-1">
-                Status
-              </span>
-              <span className="text-green-600 font-bold flex items-center gap-1.5 capitalize">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                {profileData.user.status || "offline"}
-              </span>
-            </div>
+
+            {profileData.user.supabaseId !== localUser?.id && (
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col items-center">
+                <span className="text-slate-400 text-[10px] uppercase tracking-widest font-bold mb-1">
+                  Status
+                </span>
+                <span className="text-green-600 font-bold flex items-center gap-1.5 capitalize">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  {profileData.user.status || "offline"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* User ID Action Row */}
@@ -265,6 +412,29 @@ const ProfileScreen = ({ user, onClose, onStartChat }) => {
                 </>
               )}
             </button>
+            {/* saved contact button */}
+            {profileData.user.supabaseId !== localUser?.id && (
+              <button
+                onClick={handleSaveContact}
+                className={`h-14 px-8 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all border ${
+                  isSaved
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {isSaved ? (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Saved</span>
+                  </>
+                ) : (
+                  <>
+                    <Bookmark className="w-5 h-5" />
+                    <span>Save Contact</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 

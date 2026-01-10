@@ -4,6 +4,8 @@ import { useAuth } from '../components/AuthContext';
 import { CONSTANTS } from '../components/constant';
 const { Icons, INITIAL_CHATS, INITIAL_CALLS, INITIAL_CONTACTS } = CONSTANTS;
 import ProfileScreen from '../components/ProfileScreen';
+import { useSelector, useDispatch } from 'react-redux';
+import { setContacts } from '../components/MainSlice';
 
 const Avatar = ({ src, size = 'md', status }) => {
   const sizeClass = size === 'sm' ? 'w-8 h-8' : size === 'lg' ? 'w-14 h-14' : 'w-12 h-12';
@@ -35,16 +37,91 @@ function NavButton({ active, onClick, icon, label }) {
   );
 }
 
+
+
+
 // CenterPanelContent Component
-function CenterPanelContent({ activeNav, chats, selectedChatId, onSelectChat }) {
+function CenterPanelContent({ activeNav, chats, selectedChatId, onSelectChat, onSelectProfile ,user}) {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const filteredChats = chats.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
     if (filter === 'unread') return matchesSearch && c.unreadCount > 0;
     return matchesSearch;
   });
+  console.log("user in CenterPanelContent: ", user);
+
+ // get saved contacts for the user when activeNav is 'contacts'
+  const dispatch = useDispatch();
+  const contacts = useSelector((state) => state.main.contacts);
+
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const response = await fetch(`/api/contacts/getContacts/${user.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch contacts');
+        }
+        const data = await response.json();
+        console.log('Fetched contacts:', data);
+        dispatch(setContacts(data.contacts || []));
+      } catch (error) {
+        console.error('Error fetching contacts:', error);
+      }
+    };
+    if (activeNav === 'contacts') {
+      fetchContacts();
+    } else {
+      setContacts([]);
+    }
+  }, [activeNav]);
+
+
+  useEffect(() => {
+    const delaySearch = setTimeout(async () => {
+      if (searchTerm && activeNav === 'search') {
+        setIsSearching(true);
+        const results = await searchUsers(searchTerm);
+        setSearchResults(results);
+        setIsSearching(false);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(delaySearch);
+  }, [searchTerm, activeNav]);
+
+  const searchUsers = async (searchTerm) => {
+  if (!searchTerm || searchTerm.trim() === '') {
+    return [];
+  }
+
+  try {
+    const response = await fetch('/api/users/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query: searchTerm })
+    });
+
+    if (!response.ok) {
+      console.error('Error searching users');
+      return [];
+    }
+
+    const data = await response.json();
+    return data || [];
+  } catch (error) {
+    console.error('Error searching users:', error);
+    return [];
+  }
+};
 
   return (
     <>
@@ -56,10 +133,15 @@ function CenterPanelContent({ activeNav, chats, selectedChatId, onSelectChat }) 
           <input 
             type="text" 
             placeholder={activeNav === 'search' ? "Search by User ID..." : "Search..."}
-            className="w-full pl-10 pr-4 py-3 bg-slate-100 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl transition-all outline-none"
+            className="w-full pl-10 pr-4 py-3 bg-slate-100 border-transparent focus:bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl transition-all outline-none text-black text-sm"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+           {isSearching && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
         </div>
 
         {activeNav === 'chats' && (
@@ -116,32 +198,61 @@ function CenterPanelContent({ activeNav, chats, selectedChatId, onSelectChat }) 
           </div>
         ))}
 
-        {activeNav === 'contacts' && INITIAL_CONTACTS.map(contact => (
-          <div key={contact.id} className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-all">
+        {activeNav === 'contacts' && contacts.map(contact => (
+          <button key={contact.id} className="w-full flex items-center gap-4 p-4 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100 mb-2 text-left" onClick={()=>{onSelectProfile(contact)}}>
             <Avatar src={contact.avatar} />
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-slate-900 truncate">{contact.name}</h3>
-              <p className="text-xs text-indigo-600 font-medium truncate">@{contact.userId}</p>
-              <p className="text-sm text-slate-500 truncate mt-0.5">{contact.statusText}</p>
+              <p className="text-xs text-black font-medium truncate">{contact.bio}</p>
             </div>
-          </div>
+          </button>
         ))}
 
-        {activeNav === 'search' && searchTerm && (
-          <div className="px-4 py-2">
-             <p className="text-sm text-slate-500 mb-4">Searching results for "{searchTerm}"</p>
-             <div className="flex flex-col gap-4">
-                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl text-center">
-                  <p className="text-sm text-slate-600 font-medium">No direct user matches found for this ID.</p>
-                  <button className="mt-3 px-4 py-2 bg-indigo-600 text-white text-sm rounded-xl hover:bg-indigo-700 transition-colors">Invite by Email</button>
-                </div>
-             </div>
+        {activeNav === 'search' && (
+        searchTerm ? (
+          <>
+            {searchResults.length > 0 ? (
+              searchResults.map(user => (
+                <button
+                  key={user._id || user.userId}
+                  onClick={() => onSelectProfile(user)}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100 mb-2 text-left"
+                >
+                  <Avatar src={user.avatar} />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">{user.name || 'No Name'}</div>
+                    <div className="text-sm text-gray-500">@{user.userId}</div>
+                    {/* {user.email && (
+                      <div className="text-xs text-gray-400">{user.email}</div>
+                    )} */}
+                  </div>
+                </button>
+              ))
+            ) : !isSearching ? (
+              <div className="text-center py-12">
+                {/* <div className="text-gray-400 mb-4 text-5xl">🔍</div> */}
+                <p className="text-gray-600 mb-4">
+                  No user matches found for "{searchTerm}".
+                </p>
+                <button className="px-6 py-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 transition-colors">
+                  Invite Friend
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            Enter a name, ID, or email to find people on NexTalk.
           </div>
-        )}
+        )
+      )}
       </div>
     </>
   );
 }
+
+
+
 
 // EmptyState Component
 function EmptyState() {
@@ -332,6 +443,7 @@ const mainapp = () => {
   const [isTyping, setIsTyping] = useState(false);
   const {user} = useAuth();
   const [profilePage , setProfilePage] = useState(false);
+  const [profileUser , setProfileUser] = useState(null);
   console.log("profile page state" , profilePage);  
   const avatar_url = user?.user_metadata?.avatar_url ;
 
@@ -382,7 +494,11 @@ const mainapp = () => {
     }
   }, [selectedChatId, messages]);
 
-  const setFunction = ()=>{
+  
+  const profilePageOn = (user)=>{
+    console.log("Profile user in MainApp: ", user);
+    
+    setProfileUser(user);
     setProfilePage(true);
   }
 
@@ -429,7 +545,9 @@ const mainapp = () => {
             icon={<Icons.Settings className="w-6 h-6" />} 
             label="Settings"
           />
-          <button className="group relative flex items-center justify-center p-3 rounded-xl transition-all hover:bg-slate-100" onClick={()=>{setProfilePage(true)}}>
+          <button className="group relative flex items-center justify-center p-3 rounded-xl transition-all hover:bg-slate-100" onClick={()=>{setProfilePage(true)
+            setProfileUser(user);
+          }}>
             <Avatar src={avatar_url} size="sm" />
             <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
               Profile
@@ -444,6 +562,8 @@ const mainapp = () => {
           chats={chats} 
           selectedChatId={selectedChatId}
           onSelectChat={setSelectedChatId}
+          onSelectProfile={profilePageOn}
+          user={user}
         />
       </aside>
 
@@ -459,7 +579,7 @@ const mainapp = () => {
             onStartCall={(type) => setIsCalling(type)}
           />
         ) : profilePage ? (
-          <ProfileScreen user={user} onClose={() => setProfilePage(false)} />
+          <ProfileScreen user={profileUser} onClose={() => setProfilePage(false)} />
         ) : (
           <EmptyState />
         )}
