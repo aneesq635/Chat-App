@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, use } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { CONSTANTS } from '../components/constant';
-const { Icons, INITIAL_CHATS, INITIAL_CALLS, INITIAL_CONTACTS } = CONSTANTS;
+const { Icons, INITIAL_CHATS, INITIAL_CALLS, INITIAL_CONTACTS , conversationMessages} = CONSTANTS;
 import ProfileScreen from '../components/ProfileScreen';
 import CallScreen from '../components/CallScreen';
 import CenterPanelContent from '../components/CenterPanelContent';
@@ -15,10 +15,12 @@ import ChatWindow from '../components/ChatWindow';
 const mainapp = () => {
   const [activeNav, setActiveNav] = useState('chats');
   const [selectedChatId, setSelectedChatId] = useState(null);
-  const [messages, setMessages] = useState({});
+ 
   const [chats, setChats] = useState(INITIAL_CHATS);
+  const conversationHistory = useRef(conversationMessages);
+  console.log("conversationHistory: ", conversationHistory.current);  
   const [isCalling, setIsCalling] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
+ 
   const {user} = useAuth();
   const [profilePage , setProfilePage] = useState(false);
   const [profileUser , setProfileUser] = useState(null);
@@ -27,50 +29,7 @@ const mainapp = () => {
 
   const activeChat = chats.find(c => c.id === selectedChatId);
 
-  const sendMessage = useCallback(async (text) => {
-    if (!selectedChatId || !text.trim()) return;
-
-    const newMessage = {
-      id: Date.now().toString(),
-      chatId: selectedChatId,
-      text,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent'
-    };
-
-    setMessages(prev => ({
-      ...prev,
-      [selectedChatId]: [...(prev[selectedChatId] || []), newMessage]
-    }));
-
-    setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, lastMessage: text, timestamp: 'Just now' } : c));
-
-    if (selectedChatId === '1') {
-      setIsTyping(true);
-      const history = (messages['1'] || []).map(m => ({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }]
-      }));
-      
-      const aiText = await getGeminiResponse(text, history);
-      
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        chatId: selectedChatId,
-        text: aiText || '...',
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'delivered'
-      };
-
-      setMessages(prev => ({
-        ...prev,
-        [selectedChatId]: [...(prev[selectedChatId] || []), aiMessage]
-      }));
-      setIsTyping(false);
-    }
-  }, [selectedChatId, messages]);
+ 
 
   
   const profilePageOn = (user)=>{
@@ -152,10 +111,11 @@ const mainapp = () => {
         ) : selectedChatId ? (
           <ChatWindow 
             chat={activeChat} 
-            messages={messages[selectedChatId] || []} 
-            onSendMessage={sendMessage}
-            isTyping={isTyping}
+            chats={chats}
+            setChats={setChats}
+            selectedChatId={selectedChatId}
             onStartCall={(type) => setIsCalling(type)}
+            conversationHistory={conversationHistory}
           />
         ) : profilePage ? (
           <ProfileScreen user={profileUser} onClose={() => setProfilePage(false)} />

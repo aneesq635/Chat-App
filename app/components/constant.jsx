@@ -57,6 +57,22 @@ const INITIAL_CHATS = [
   { id: '4', name: 'Mike Johnson', avatar: 'https://picsum.photos/id/1040/100', lastMessage: 'Sent a photo.', timestamp: '09:12 AM', unreadCount: 1, status: 'online' },
 ];
 
+const conversationMessages = {
+  '1': [
+    { id: 'm1', sender: 'bot', text: 'Hello! I am Claude, your AI assistant. How can I help you today?', timestamp: '10:00 AM' },
+    { id: 'm2', sender: 'user', text: 'Hi Claude! Can you help me with my project?', timestamp: '10:02 AM' },
+    { id: 'm3', sender: 'bot', text: 'Of course! What do you need assistance with?', timestamp: '10:05 AM' },
+  ],
+  '2': [
+    { id: 'm1', sender: 'Sarah', text: 'Hey! Did you check the new design mockups?', timestamp: 'Yesterday, 3:15 PM' },
+    { id: 'm2', sender: 'user', text: 'Yes, they look great! I especially like the color scheme.', timestamp: 'Yesterday, 3:17 PM' },
+  ],
+  '3': [
+    { id: 'm1', sender: 'David', text: 'Let\'s schedule a meeting to discuss the project timeline.', timestamp: 'Wednesday, 11:00 AM' },
+    { id: 'm2', sender: 'user', text: 'Sure, how about Friday at 2 PM?', timestamp: 'Wednesday, 11:05 AM' },
+  ],
+};
+
 const INITIAL_CALLS = [
   { id: 'c1', name: 'Sarah Wilson', avatar: 'https://picsum.photos/id/1027/100', type: 'video', status: 'completed', timestamp: 'Today, 11:30 AM' },
   { id: 'c2', name: 'Mike Johnson', avatar: 'https://picsum.photos/id/1040/100', type: 'voice', status: 'missed', timestamp: 'Yesterday, 4:20 PM' },
@@ -73,4 +89,5 @@ export const CONSTANTS = {
   INITIAL_CHATS,
   INITIAL_CALLS,
   INITIAL_CONTACTS,
+  conversationMessages
 };

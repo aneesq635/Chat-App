@@ -1,25 +1,100 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { CONSTANTS } from './constant';
 const { Icons } = CONSTANTS;
 import { Avatar } from "./Utilities";
 
 // ChatWindow Component
-function ChatWindow({ chat, messages, onSendMessage, isTyping, onStartCall }) {
+function ChatWindow({ chat, chats, setChats, selectedChatId, onStartCall, conversationHistory }) {
   const [inputText, setInputText] = useState('');
+  const [messages, setMessages] = useState({});
+  console.log("messages in ChatWindow: ", messages);
+  const chatMessages = messages[selectedChatId] || [];
+   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef(null);
+  console.log("chat in ChatWindow: ", chat);
+  console.log("chats in ChatWindow: ", chats);
+
+  // Safely get conversation history for the active chat and merge with in-memory messages
+  const chatHistory = conversationHistory?.current?.[selectedChatId] || [];
+  const mergedMessages = [...chatHistory, ...chatMessages];
+  console.log("conversation history", chatHistory);
+
+  // now i want when the NEW MESSAGE APPear it also store to the conversationHistory
+  const addMessageToHistory = (message) => {
+    if (conversationHistory && conversationHistory.current) {
+      conversationHistory.current[selectedChatId] = [
+        ...(conversationHistory.current[selectedChatId] || []),
+        message
+      ];
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [chatMessages, isTyping]);
+
+   const sendMessage = useCallback(async (text) => {
+    if (!selectedChatId || !text.trim()) return;
+
+    const newMessage = {
+      id: Date.now().toString(),
+      chatId: selectedChatId,
+      text,
+      sender: 'user',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'sent'
+    };
+
+    setMessages(prev => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] || []), newMessage]
+    }));
+
+    setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, lastMessage: text, timestamp: 'Just now' } : c));
+
+    if (selectedChatId === '1') {
+      setIsTyping(true);
+      const history = (messages['1'] || []).map(m => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+      
+      const aiText = await getGeminiResponse(text, history);
+      
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        chatId: selectedChatId,
+        text: aiText || '...',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'delivered'
+      };
+
+      setMessages(prev => ({
+        ...prev,
+        [selectedChatId]: [...(prev[selectedChatId] || []), aiMessage]
+      }));
+      setIsTyping(false);
+    }
+  }, [selectedChatId, messages]);
 
   const handleSend = () => {
     if (inputText.trim()) {
-      onSendMessage(inputText);
+      sendMessage(inputText);
       setInputText('');
+      addMessageToHistory({
+        id: Date.now().toString(),
+        chatId: selectedChatId,
+        text: inputText,
+        sender: 'user',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'sent'
+      });
     }
   };
+  console.log("conversation history", conversationHistory.current[selectedChatId]);
 
   return (
     <div className="h-full flex flex-col">
@@ -44,12 +119,12 @@ function ChatWindow({ chat, messages, onSendMessage, isTyping, onStartCall }) {
         <div className="flex justify-center mb-8">
            <span className="px-3 py-1 bg-white shadow-sm border border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400 rounded-full">Today</span>
         </div>
-        
-        {messages.length === 0 && (
+
+        {mergedMessages.length === 0 && (
           <div className="text-center text-slate-400 text-sm italic py-10">No messages yet. Say hi! 👋</div>
         )}
 
-        {messages.map((m) => (
+        {mergedMessages.map((m) => (
           <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[70%] px-4 py-2.5 rounded-2xl text-sm shadow-sm ${m.sender === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-slate-800 rounded-tl-none border border-slate-100'}`}>
               <p className="leading-relaxed">{m.text}</p>
