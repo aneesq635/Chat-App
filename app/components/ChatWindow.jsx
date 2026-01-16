@@ -1,33 +1,88 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { CONSTANTS } from './constant';
+import { addMessageToHistory } from './MainSlice';
 const { Icons } = CONSTANTS;
 import { Avatar } from "./Utilities";
+import { useSocket } from '../lib/hook/useSocket';
 
 // ChatWindow Component
-function ChatWindow({ chat, chats, setChats, selectedChatId, onStartCall, conversationHistory }) {
+
+function ChatWindow({ chat, selectedChatId, onStartCall }) {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState({});
+  const dispatch = useDispatch();
+  const conversationMessages = useSelector((state) => state.main.conversationMessages);
+  
   console.log("messages in ChatWindow: ", messages);
   const chatMessages = messages[selectedChatId] || [];
    const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef(null);
   console.log("chat in ChatWindow: ", chat);
-  console.log("chats in ChatWindow: ", chats);
 
   // Safely get conversation history for the active chat and merge with in-memory messages
-  const chatHistory = conversationHistory?.current?.[selectedChatId] || [];
+  const chatHistory = conversationMessages[selectedChatId] || [];
   const mergedMessages = [...chatHistory, ...chatMessages];
   console.log("conversation history", chatHistory);
+  const socket = useSocket(chat.userId);
 
   // now i want when the NEW MESSAGE APPear it also store to the conversationHistory
-  const addMessageToHistory = (message) => {
-    if (conversationHistory && conversationHistory.current) {
-      conversationHistory.current[selectedChatId] = [
-        ...(conversationHistory.current[selectedChatId] || []),
-        message
-      ];
+  const addMessageToHistoryLocal = (message) => {
+    dispatch(addMessageToHistory({ chatId: selectedChatId, message }));
+  };
+  
+  useEffect(() => {
+  if (!socket || !selectedChatId) return;
+
+  // Join chat room
+  socket.emit('join-chat', selectedChatId);
+
+  // Listen for new messages
+  socket.on('new-message', (message) => {
+    setMessages(prev => ({
+      ...prev,
+      [selectedChatId]: [...(prev[selectedChatId] || []), message]
+    }));
+    
+    addMessageToHistoryLocal(message);
+  });
+
+  // Listen for typing indicator
+  socket.on('user-typing', ({ isTyping }) => {
+    setIsTyping(isTyping);
+  });
+
+  // Fetch messages from database on mount
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch(`/api/messages/${selectedChatId}`);
+      const data = await res.json();
+      if (data.messages) {
+        setMessages(prev => ({
+          ...prev,
+          [selectedChatId]: data.messages.map(m => ({
+            id: m._id,
+            chatId: m.chatId,
+            text: m.text,
+            sender: m.senderId === chat.userId ? 'user' : 'bot',
+            timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: m.status
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
     }
   };
+
+  fetchMessages();
+
+  return () => {
+    socket.emit('leave-chat', selectedChatId);
+    socket.off('new-message');
+    socket.off('user-typing');
+  };
+}, [socket, selectedChatId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -35,56 +90,26 @@ function ChatWindow({ chat, chats, setChats, selectedChatId, onStartCall, conver
     }
   }, [chatMessages, isTyping]);
 
-   const sendMessage = useCallback(async (text) => {
-    if (!selectedChatId || !text.trim()) return;
+ // Update sendMessage function:
+const sendMessage = useCallback(async (text) => {
+  if (!selectedChatId || !text.trim() || !socket) return;
 
-    const newMessage = {
-      id: Date.now().toString(),
-      chatId: selectedChatId,
-      text,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      status: 'sent'
-    };
+  const newMessage = {
+    chatId: selectedChatId,
+    senderId: chat.userId, // Your current user ID
+    text,
+    receiverId: chat.id, // The other user's ID
+  };
 
-    setMessages(prev => ({
-      ...prev,
-      [selectedChatId]: [...(prev[selectedChatId] || []), newMessage]
-    }));
-
-    setChats(prev => prev.map(c => c.id === selectedChatId ? { ...c, lastMessage: text, timestamp: 'Just now' } : c));
-
-    if (selectedChatId === '1') {
-      setIsTyping(true);
-      const history = (messages['1'] || []).map(m => ({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }]
-      }));
-      
-      const aiText = await getGeminiResponse(text, history);
-      
-      const aiMessage = {
-        id: (Date.now() + 1).toString(),
-        chatId: selectedChatId,
-        text: aiText || '...',
-        sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'delivered'
-      };
-
-      setMessages(prev => ({
-        ...prev,
-        [selectedChatId]: [...(prev[selectedChatId] || []), aiMessage]
-      }));
-      setIsTyping(false);
-    }
-  }, [selectedChatId, messages]);
+  socket.emit('send-message', newMessage);
+  setInputText('');
+}, [selectedChatId, socket, chat]);
 
   const handleSend = () => {
     if (inputText.trim()) {
       sendMessage(inputText);
       setInputText('');
-      addMessageToHistory({
+      addMessageToHistoryLocal({
         id: Date.now().toString(),
         chatId: selectedChatId,
         text: inputText,
@@ -94,7 +119,8 @@ function ChatWindow({ chat, chats, setChats, selectedChatId, onStartCall, conver
       });
     }
   };
-  console.log("conversation history", conversationHistory.current[selectedChatId]);
+  console.log("conversation history", conversationMessages[selectedChatId]);
+  
 
   return (
     <div className="h-full flex flex-col">
