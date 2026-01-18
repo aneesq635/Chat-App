@@ -1,12 +1,12 @@
-import { connectDB } from './../../../../lib/db';
-import Chat from './../../../../lib/Model/Chat';
-import { mongoPromise } from './../../../../lib/mongoPromise';
+import { connectDB } from '../../../../lib/db';
+import Chat from '../../../../lib/Model/Chat';
+import  clientPromise  from "../../../../lib/mongoPromise.js"
 import { NextResponse } from 'next/server';
 
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const { userId } = params;
+    const { userId } = await params;
 
     // Get chats using Mongoose
     const chats = await Chat.find({
@@ -14,7 +14,7 @@ export async function GET(req, { params }) {
     }).sort({ lastMessageTime: -1 });
 
     // Get participant details from users collection
-    const client = await mongoPromise;
+    const client = await clientPromise;
     const db = client.db("NexTalk");
     const usersCollection = db.collection("users");
 

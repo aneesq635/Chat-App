@@ -5,21 +5,24 @@ export function useSocket(userId) {
   const socketRef = useRef(null);
 
   useEffect(() => {
-    // Initialize socket connection
-    socketRef.current = io({
-      path: '/api/socket',
-      autoConnect: true
+    // Initialize socket connection to custom server
+    socketRef.current = io('http://localhost:3000', {
+      transports: ['websocket', 'polling']
     });
 
     socketRef.current.on('connect', () => {
-      console.log('Socket connected');
+      console.log('✅ Socket connected');
       if (userId) {
         socketRef.current.emit('join', userId);
       }
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log('Socket disconnected');
+      console.log('❌ Socket disconnected');
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
     });
 
     return () => {

@@ -15,35 +15,44 @@ import CenterPanelContent from "../components/CenterPanelContent";
 import { Avatar, EmptyState, NavButton } from "../components/Utilities";
 import ChatWindow from "../components/ChatWindow";
 
-import { setActiveNav, setChats, setSelectedChatId, setIsCalling } from "../components/MainSlice";
+import {
+  setActiveNav,
+  setChats,
+  setSelectedChatId,
+  setIsCalling,
+} from "../components/MainSlice";
 import { useSelector, useDispatch } from "react-redux";
 
 const mainapp = () => {
+  // all states
   const activeNav = useSelector((state) => state.main.activeNav);
   const selectedChatId = useSelector((state) => state.main.selectedChatId);
   const chats = useSelector((state) => state.main.chats);
   const isCalling = useSelector((state) => state.main.isCalling);
-
-  const { user } = useAuth();
   const [profilePage, setProfilePage] = useState(false);
   const [profileUser, setProfileUser] = useState(null);
-  console.log("profile page state", profilePage);
-  const avatar_url = user?.user_metadata?.avatar_url;
-  const activeChat = chats.find((c) => c.id === selectedChatId);
   const dispatch = useDispatch();
+  const activeChat = chats.find((c) => c.id === selectedChatId);
+
+  const { user } = useAuth();
+  const avatar_url = user?.user_metadata?.avatar_url;
+  console.log("user", user)
+
+  // function and useEffects
 
   useEffect(() => {
     const fetchUserChats = async () => {
-      if (!user?.supabaseId) return;
+      if (!user?.id) return;
 
       try {
-        const response = await fetch(`/api/chats/user/${user.supabaseId}`);
+        const response = await fetch(`/api/chats/user/${user.id}`);
         const { chats: userChats } = await response.json();
+        console.log("fetching chats", userChats);
 
         const formattedChats = userChats.map((chat) => {
           // Get the other participant (not current user)
           const otherParticipant = chat.participantDetails.find(
-            (p) => p.supabaseId !== user.supabaseId
+            (p) => p.supabaseId !== user.id,
           );
 
           return {
@@ -59,7 +68,7 @@ const mainapp = () => {
             userId: otherParticipant?.supabaseId,
           };
         });
-
+        console.log("formated chats", formattedChats);
         dispatch(setChats(formattedChats));
       } catch (error) {
         console.error("Error fetching chats:", error);
@@ -88,8 +97,11 @@ const mainapp = () => {
     setProfileUser(user);
     setProfilePage(true);
   };
-  
-  console.log("active nav", activeNav)
+
+  // all logs
+  console.log("profile page state", profilePage);
+  console.log("active nav", activeNav);
+
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden">
       {/* Navigation Bar */}
@@ -150,10 +162,7 @@ const mainapp = () => {
       </nav>
 
       <aside className="w-80 md:w-96 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
-        <CenterPanelContent
-          onSelectProfile={profilePageOn}
-          user={user}
-        />
+        <CenterPanelContent onSelectProfile={profilePageOn} user={user} />
       </aside>
 
       <main className="flex-1 relative flex flex-col bg-[#f0f2f5] min-w-0">

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 export async function GET(req, { params }) {
   try {
     await connectDB();
-    const { chatId } = params;
+    const { chatId } = await params;
 
     const messages = await Message.find({ chatId })
       .sort({ timestamp: 1 })

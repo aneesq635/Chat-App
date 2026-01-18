@@ -5,22 +5,27 @@ import { CONSTANTS } from "./constant";
 const { Icons, INITIAL_CALLS } = CONSTANTS;
 
 import { Avatar } from "./Utilities";
-import { setContacts, setActiveNav, setChats, setSelectedChatId } from "./MainSlice";
+import {
+  setContacts,
+  setActiveNav,
+  setChats,
+  setSelectedChatId,
+} from "./MainSlice";
 
-function CenterPanelContent({
-  user,
-  onSelectProfile,
-}) {
+function CenterPanelContent({ user, onSelectProfile }) {
+  // all states
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const dispatch = useDispatch();
+
   const activeNav = useSelector((state) => state.main.activeNav);
   const selectedChatId = useSelector((state) => state.main.selectedChatId);
   const chats = useSelector((state) => state.main.chats);
   const contacts = useSelector((state) => state.main.contacts);
 
+  // all functions and useEffects
   const filteredChats = chats.filter((c) => {
     const matchesSearch = c.name
       .toLowerCase()
@@ -28,7 +33,6 @@ function CenterPanelContent({
     if (filter === "unread") return matchesSearch && c.unreadCount > 0;
     return matchesSearch;
   });
-  console.log("user in CenterPanelContent: ", user);
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -49,7 +53,7 @@ function CenterPanelContent({
     } else {
       dispatch(setContacts([]));
     }
-  }, [activeNav, dispatch, user.id]);
+  }, [activeNav, dispatch]);
 
   useEffect(() => {
     const delaySearch = setTimeout(async () => {
@@ -65,47 +69,46 @@ function CenterPanelContent({
 
     return () => clearTimeout(delaySearch);
   }, [searchTerm, activeNav]);
- 
-  const handleStartChat = async (contact) => {
-  try {
-    // Check if chat already exists or create new one
-    console.log("userid and supabaseid", user.id, contact.supabaseId)
-    const response = await fetch('/api/chats/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        participants: [user.id, contact.supabaseId]
-      })
-    });
 
-    const { chat } = await response.json();
-    
-    // Add to chats list if not already there
-    const chatExists = chats.find(c => c.id === chat._id.toString());
-    
-    if (!chatExists) {
-      const newChat = {
-        id: chat._id.toString(),
-        name: contact.name,
-        avatar: contact.avatar,
-        lastMessage: '',
-        timestamp: 'Now',
-        unreadCount: 0,
-        status: 'offline',
-        userId: contact.supabaseId // Store the other user's ID
-      };
-      
-      dispatch(setChats([newChat, ...chats]));
+  const handleStartChat = async (contact) => {
+    try {
+      // Check if chat already exists or create new one
+      console.log("userid and supabaseid", user.id, contact.supabaseId);
+      const response = await fetch("/api/chats/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participants: [user.id, contact.supabaseId],
+        }),
+      });
+
+      const { chat } = await response.json();
+
+      // Add to chats list if not already there
+      const chatExists = chats.find((c) => c.id === chat._id.toString());
+
+      if (!chatExists) {
+        const newChat = {
+          id: chat._id.toString(),
+          name: contact.name,
+          avatar: contact.avatar,
+          lastMessage: "",
+          timestamp: "Now",
+          unreadCount: 0,
+          status: "offline",
+          userId: contact.supabaseId, // Store the other user's ID
+        };
+
+        dispatch(setChats([newChat, ...chats]));
+      }
+
+      // Switch to chats tab and select this chat
+      dispatch(setActiveNav("chats"));
+      dispatch(setSelectedChatId(chat._id.toString()));
+    } catch (error) {
+      console.error("Error starting chat:", error);
     }
-    
-    // Switch to chats tab and select this chat
-    dispatch(setActiveNav('chats'));
-    dispatch(setSelectedChatId(chat._id.toString()));
-    
-  } catch (error) {
-    console.error('Error starting chat:', error);
-  }
-};
+  };
 
   const searchUsers = async (searchTerm) => {
     if (!searchTerm || searchTerm.trim() === "") {
@@ -133,6 +136,9 @@ function CenterPanelContent({
       return [];
     }
   };
+
+  // all logs
+  console.log("user in CenterPanelContent: ", user);
 
   return (
     <>
@@ -251,7 +257,6 @@ function CenterPanelContent({
         {activeNav === "contacts" &&
           contacts.map((contact) => (
             <div>
-            
               <button
                 key={contact.id}
                 className="w-full flex items-center gap-4 p-4 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100 mb-2 text-left"
@@ -274,8 +279,8 @@ function CenterPanelContent({
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
               >
                 Chat
-              </button></div>
-            
+              </button>
+            </div>
           ))}
 
         {activeNav === "search" &&
