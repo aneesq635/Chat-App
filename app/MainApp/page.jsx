@@ -6,8 +6,7 @@ const {
   Icons,
   INITIAL_CHATS,
   INITIAL_CALLS,
-  INITIAL_CONTACTS,
-  conversationMessages,
+  INITIAL_CONTACTS
 } = CONSTANTS;
 import ProfileScreen from "../components/ProfileScreen";
 import CallScreen from "../components/CallScreen";

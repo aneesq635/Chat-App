@@ -27,4 +27,7 @@ const MessageSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Compound index for efficient queries
+MessageSchema.index({ chatId: 1, timestamp: -1 });
+
 export default mongoose.models.Message || mongoose.model('Message', MessageSchema);

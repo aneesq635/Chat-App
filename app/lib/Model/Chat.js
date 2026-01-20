@@ -1,3 +1,4 @@
+// app/lib/Model/Chat.js
 import mongoose from 'mongoose';
 
 const ChatSchema = new mongoose.Schema({
@@ -17,6 +18,11 @@ const ChatSchema = new mongoose.Schema({
     type: String,
     enum: ['direct', 'group'],
     default: 'direct'
+  },
+  // NEW: Reference to conversation history
+  conversationHistoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ConversationHistory'
   }
 }, {
   timestamps: true
