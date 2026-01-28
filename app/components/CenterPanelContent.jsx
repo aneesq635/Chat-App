@@ -69,46 +69,47 @@ function CenterPanelContent({ user, onSelectProfile }) {
 
     return () => clearTimeout(delaySearch);
   }, [searchTerm, activeNav]);
+  // chat system
+  
+  // const handleStartChat = async (contact) => {
+  //   try {
+  //     // Check if chat already exists or create new one
+  //     console.log("userid and supabaseid", user.id, contact.supabaseId);
+  //     const response = await fetch("/api/chats/create", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         participants: [user.id, contact.supabaseId],
+  //       }),
+  //     });
 
-  const handleStartChat = async (contact) => {
-    try {
-      // Check if chat already exists or create new one
-      console.log("userid and supabaseid", user.id, contact.supabaseId);
-      const response = await fetch("/api/chats/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          participants: [user.id, contact.supabaseId],
-        }),
-      });
+  //     const { chat } = await response.json();
 
-      const { chat } = await response.json();
+  //     // Add to chats list if not already there
+  //     const chatExists = chats.find((c) => c.id === chat._id.toString());
 
-      // Add to chats list if not already there
-      const chatExists = chats.find((c) => c.id === chat._id.toString());
+  //     if (!chatExists) {
+  //       const newChat = {
+  //         id: chat._id.toString(),
+  //         name: contact.name,
+  //         avatar: contact.avatar,
+  //         lastMessage: "",
+  //         timestamp: "Now",
+  //         unreadCount: 0,
+  //         status: "offline",
+  //         userId: contact.supabaseId, // Store the other user's ID
+  //       };
 
-      if (!chatExists) {
-        const newChat = {
-          id: chat._id.toString(),
-          name: contact.name,
-          avatar: contact.avatar,
-          lastMessage: "",
-          timestamp: "Now",
-          unreadCount: 0,
-          status: "offline",
-          userId: contact.supabaseId, // Store the other user's ID
-        };
+  //       dispatch(setChats([newChat, ...chats]));
+  //     }
 
-        dispatch(setChats([newChat, ...chats]));
-      }
-
-      // Switch to chats tab and select this chat
-      dispatch(setActiveNav("chats"));
-      dispatch(setSelectedChatId(chat._id.toString()));
-    } catch (error) {
-      console.error("Error starting chat:", error);
-    }
-  };
+  //     // Switch to chats tab and select this chat
+  //     dispatch(setActiveNav("chats"));
+  //     dispatch(setSelectedChatId(chat._id.toString()));
+  //   } catch (error) {
+  //     console.error("Error starting chat:", error);
+  //   }
+  // };
 
   const searchUsers = async (searchTerm) => {
     if (!searchTerm || searchTerm.trim() === "") {

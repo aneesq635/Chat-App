@@ -62,16 +62,18 @@ export const mainSlice = createSlice({
       delete state.conversationMessages[chatId];
     },
 
-     updateMessageStatus: (state, action) => {
-      const { chatId, messageId, status } = action.payload;
-      
-      if (state.conversationMessages[chatId]) {
-        const message = state.conversationMessages[chatId].find(
-          m => m.id === messageId
-        );
-        if (message) {
-          message.status = status;
-        }
+    updateMessageStatus: (state, action) => {
+      const { chatId, tempId, messageId, status } = action.payload;
+      const messages = state.conversationMessages[chatId] || [];
+
+      const messageIndex = messages.findIndex((m) => m.id === tempId);
+      if (messageIndex !== -1) {
+        messages[messageIndex] = {
+          ...messages[messageIndex],
+          id: messageId,
+          status,
+        };
+        state.conversationMessages[chatId] = messages;
       }
     },
   },
@@ -86,8 +88,8 @@ export const {
   setSelectedChatId,
   setIsCalling,
   addMessageToHistory,
-   clearConversation,
-  updateMessageStatus 
+  clearConversation,
+  updateMessageStatus,
 } = mainSlice.actions;
 
 export default mainSlice.reducer;

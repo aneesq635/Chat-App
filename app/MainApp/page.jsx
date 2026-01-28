@@ -38,44 +38,44 @@ const mainapp = () => {
   console.log("user", user)
 
   // function and useEffects
+  // Fetch user chats when component mounts or user changes
+  // useEffect(() => {
+  //   const fetchUserChats = async () => {
+  //     if (!user?.id) return;
 
-  useEffect(() => {
-    const fetchUserChats = async () => {
-      if (!user?.id) return;
+  //     try {
+  //       const response = await fetch(`/api/chats/user/${user.id}`);
+  //       const { chats: userChats } = await response.json();
+  //       console.log("fetching chats", userChats);
 
-      try {
-        const response = await fetch(`/api/chats/user/${user.id}`);
-        const { chats: userChats } = await response.json();
-        console.log("fetching chats", userChats);
+  //       const formattedChats = userChats.map((chat) => {
+  //         // Get the other participant (not current user)
+  //         const otherParticipant = chat.participantDetails.find(
+  //           (p) => p.supabaseId !== user.id,
+  //         );
 
-        const formattedChats = userChats.map((chat) => {
-          // Get the other participant (not current user)
-          const otherParticipant = chat.participantDetails.find(
-            (p) => p.supabaseId !== user.id,
-          );
+  //         return {
+  //           id: chat._id.toString(),
+  //           name: otherParticipant?.name || "Unknown",
+  //           avatar: otherParticipant?.avatar || "",
+  //           lastMessage: chat.lastMessage || "",
+  //           timestamp: chat.lastMessageTime
+  //             ? formatTimestamp(chat.lastMessageTime)
+  //             : "",
+  //           unreadCount: 0,
+  //           status: "offline",
+  //           userId: otherParticipant?.supabaseId,
+  //         };
+  //       });
+  //       console.log("formated chats", formattedChats);
+  //       dispatch(setChats(formattedChats));
+  //     } catch (error) {
+  //       console.error("Error fetching chats:", error);
+  //     }
+  //   };
 
-          return {
-            id: chat._id.toString(),
-            name: otherParticipant?.name || "Unknown",
-            avatar: otherParticipant?.avatar || "",
-            lastMessage: chat.lastMessage || "",
-            timestamp: chat.lastMessageTime
-              ? formatTimestamp(chat.lastMessageTime)
-              : "",
-            unreadCount: 0,
-            status: "offline",
-            userId: otherParticipant?.supabaseId,
-          };
-        });
-        console.log("formated chats", formattedChats);
-        dispatch(setChats(formattedChats));
-      } catch (error) {
-        console.error("Error fetching chats:", error);
-      }
-    };
-
-    fetchUserChats();
-  }, [user, dispatch]);
+  //   fetchUserChats();
+  // }, [user, dispatch]);
 
   // Helper function for timestamp
   const formatTimestamp = (date) => {
