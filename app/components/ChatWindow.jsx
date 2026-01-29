@@ -25,119 +25,50 @@ function ChatWindow({ chat, selectedChatId, onStartCall }) {
   const {user} = useAuth()
   const currentUserId = user?.id;
   
-  const socket = useSocket(currentUserId);
+
   
-  console.log("=== ChatWindow Debug ===");
-  console.log("Current User ID:", currentUserId);
-  console.log("Other User (chat.userId):", chat.userId);
-  console.log("Other User (chat.id):", chat.id);
-  console.log("Selected Chat ID:", selectedChatId);
-  console.log("Socket status:", socket ? "✅ Connected" : "❌ Not connected");
 
   // Fetch conversation history
-  useEffect(() => {
-    if (!selectedChatId) return;
+  // useEffect(() => {
+  //   if (!selectedChatId) return;
     
-    const fetchConversationHistory = async () => {
-      setIsLoading(true);
-      try {
-        console.log("📥 Fetching conversation history for:", selectedChatId);
-        const res = await fetch(`/api/conversation/${selectedChatId}`);
-        const data = await res.json();
+  //   const fetchConversationHistory = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       console.log("📥 Fetching conversation history for:", selectedChatId);
+  //       const res = await fetch(`/api/conversation/${selectedChatId}`);
+  //       const data = await res.json();
         
-        console.log("📦 Received data:", data);
+  //       console.log("📦 Received data:", data);
         
-        if (data.success && data.messages) {
-          // Format messages: compare senderId with CURRENT user
-          const formattedMessages = data.messages.map(m => {
-            const isMyMessage = m.senderId === currentUserId;
-            console.log(`Message from ${m.senderId}: ${isMyMessage ? 'ME' : 'OTHER'}`);
+  //       if (data.success && data.messages) {
+  //         // Format messages: compare senderId with CURRENT user
+  //         const formattedMessages = data.messages.map(m => {
+  //           const isMyMessage = m.senderId === currentUserId;
+  //           console.log(`Message from ${m.senderId}: ${isMyMessage ? 'ME' : 'OTHER'}`);
             
-            return {
-              ...m,
-              sender: isMyMessage ? "user" : "bot"
-            };
-          });
+  //           return {
+  //             ...m,
+  //             sender: isMyMessage ? "user" : "bot"
+  //           };
+  //         });
           
-          dispatch(setConversationMessages({ 
-            chatId: selectedChatId, 
-            messages: formattedMessages 
-          }));
-        }
-      } catch (error) {
-        console.error("❌ Error fetching conversation history:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  //         dispatch(setConversationMessages({ 
+  //           chatId: selectedChatId, 
+  //           messages: formattedMessages 
+  //         }));
+  //       }
+  //     } catch (error) {
+  //       console.error("❌ Error fetching conversation history:", error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
 
-    fetchConversationHistory();
-  }, [selectedChatId, dispatch, currentUserId]);
+  //   fetchConversationHistory();
+  // }, [selectedChatId, dispatch, currentUserId]);
 
-  // Socket listeners
-  useEffect(() => {
-    if (!socket) {
-      console.log("❌ Socket not initialized");
-      return;
-    }
-    
-    if (!selectedChatId) {
-      console.log("❌ No chat selected");
-      return;
-    }
-
-    console.log("✅ Joining chat:", selectedChatId);
-    socket.emit("join-chat", selectedChatId);
-
-    // Listen for new messages
-    const handleNewMessage = (message) => {
-      console.log("📩 NEW MESSAGE RECEIVED:");
-      console.log("  - Message ID:", message.id);
-      console.log("  - Sender ID:", message.senderId);
-      console.log("  - Current User ID:", currentUserId);
-      console.log("  - Text:", message.text);
-      
-      const isMyMessage = message.senderId === currentUserId;
-      
-      const formattedMessage = {
-        id: message.id,
-        chatId: message.chatId,
-        text: message.text,
-        sender: isMyMessage ? "user" : "bot",
-        timestamp: message.timestamp,
-        status: message.status || "delivered",
-      };
-
-      // Only add if message is NOT from current user (to avoid duplicates)
-      if (!isMyMessage) {
-        console.log("✅ Adding OTHER user's message to history");
-        dispatch(addMessageToHistory({ 
-          chatId: selectedChatId, 
-          message: formattedMessage 
-        }));
-      } else {
-        console.log("⚠️ Skipping own message (already added optimistically)");
-      }
-    };
-
-    const handleTyping = ({ userId, isTyping: typing }) => {
-      console.log("⌨️ Typing event:", { userId, typing });
-      // Only show typing if it's from the OTHER user
-      if (userId !== currentUserId) {
-        setIsTyping(typing);
-      }
-    };
-
-    socket.on("new-message", handleNewMessage);
-    socket.on("user-typing", handleTyping);
-
-    return () => {
-      console.log("👋 Leaving chat:", selectedChatId);
-      socket.emit("leave-chat", selectedChatId);
-      socket.off("new-message", handleNewMessage);
-      socket.off("user-typing", handleTyping);
-    };
-  }, [socket, selectedChatId, currentUserId, dispatch]);
+  
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -160,62 +91,9 @@ function ChatWindow({ chat, selectedChatId, onStartCall }) {
   };
 
   // Send message function
-  const sendMessage = useCallback(
-    async (text) => {
-      console.log("=== SENDING MESSAGE ===");
-      console.log("Chat ID:", selectedChatId);
-      console.log("Text:", text);
-      console.log("Socket:", socket ? "✅" : "❌");
-      
-      if (!selectedChatId || !text.trim() || !socket || !currentUserId) {
-        console.log("❌ Cannot send - missing required data");
-        return;
-      }
-
-      const tempId = `temp-${Date.now()}`;
-      
-      const optimisticMessage = {
-        id: tempId,
-        chatId: selectedChatId,
-        text,
-        sender: "user",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        status: "sending",
-      };
-
-      // Add optimistic message immediately
-      dispatch(addMessageToHistory({ 
-        chatId: selectedChatId, 
-        message: optimisticMessage 
-      }));
-
-      // Prepare message data
-      // chat.userId is the OTHER user's ID (the person you're chatting with)
-      const messageData = {
-        chatId: selectedChatId,
-        senderId: currentUserId,        // YOUR user ID
-        receiverId: chat.userId,        // OTHER user's ID
-        text,
-        tempId
-      };
-
-      console.log("📤 Emitting message:", messageData);
-      
-      // Send via socket
-      socket.emit("send-message", messageData);
-      
-      // Stop typing indicator
-      socket.emit("typing", {
-        chatId: selectedChatId,
-        userId: currentUserId,
-        isTyping: false
-      });
-    },
-    [selectedChatId, socket, chat.userId, currentUserId, dispatch]
-  );
+  const sendMessage = (inputText)=>{
+    console.log("Send message:", inputText);
+  };
 
   const handleSend = () => {
     if (inputText.trim()) {

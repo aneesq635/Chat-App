@@ -7,7 +7,7 @@ export async function GET(request, { params }) {
     if (!id) {
       return NextResponse.json(
         { error: "Missing id parameter" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const client = await mongoPromise;
@@ -27,14 +27,16 @@ export async function GET(request, { params }) {
           projection: {
             // PROJECTION (which fields)
             supabaseId: 1,
-            userId:1,
+            userId: 1,
             name: 1,
             email: 1,
             avatar: 1,
             bio: 1,
+            status: 1,
+            lastSeen: 1,
             _id: 0,
           },
-        }
+        },
       )
       .toArray();
 
@@ -43,7 +45,7 @@ export async function GET(request, { params }) {
     console.error("Error fetching contacts:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

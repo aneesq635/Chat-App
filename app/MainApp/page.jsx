@@ -2,12 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, use } from "react";
 import { useAuth } from "../components/AuthContext";
 import { CONSTANTS } from "../components/constant";
-const {
-  Icons,
-  INITIAL_CHATS,
-  INITIAL_CALLS,
-  INITIAL_CONTACTS
-} = CONSTANTS;
+const { Icons, INITIAL_CHATS, INITIAL_CALLS, INITIAL_CONTACTS } = CONSTANTS;
 import ProfileScreen from "../components/ProfileScreen";
 import CallScreen from "../components/CallScreen";
 import CenterPanelContent from "../components/CenterPanelContent";
@@ -35,47 +30,47 @@ const mainapp = () => {
 
   const { user } = useAuth();
   const avatar_url = user?.user_metadata?.avatar_url;
-  console.log("user", user)
+  console.log("user", user);
 
   // function and useEffects
   // Fetch user chats when component mounts or user changes
-  // useEffect(() => {
-  //   const fetchUserChats = async () => {
-  //     if (!user?.id) return;
+  useEffect(() => {
+    const fetchUserChats = async () => {
+      if (!user?.id) return;
 
-  //     try {
-  //       const response = await fetch(`/api/chats/user/${user.id}`);
-  //       const { chats: userChats } = await response.json();
-  //       console.log("fetching chats", userChats);
+      try {
+        const response = await fetch(`/api/chats/user?userId=${user.id}`);
+        const { chats: userChats } = await response.json();
+        console.log("fetching chats", userChats);
 
-  //       const formattedChats = userChats.map((chat) => {
-  //         // Get the other participant (not current user)
-  //         const otherParticipant = chat.participantDetails.find(
-  //           (p) => p.supabaseId !== user.id,
-  //         );
+        const formattedChats = userChats.map((chat) => {
+          // Get the other participant (not current user)
+          const otherParticipant = chat.participantDetails.find(
+            (p) => p.supabaseId !== user.id,
+          );
 
-  //         return {
-  //           id: chat._id.toString(),
-  //           name: otherParticipant?.name || "Unknown",
-  //           avatar: otherParticipant?.avatar || "",
-  //           lastMessage: chat.lastMessage || "",
-  //           timestamp: chat.lastMessageTime
-  //             ? formatTimestamp(chat.lastMessageTime)
-  //             : "",
-  //           unreadCount: 0,
-  //           status: "offline",
-  //           userId: otherParticipant?.supabaseId,
-  //         };
-  //       });
-  //       console.log("formated chats", formattedChats);
-  //       dispatch(setChats(formattedChats));
-  //     } catch (error) {
-  //       console.error("Error fetching chats:", error);
-  //     }
-  //   };
+        
 
-  //   fetchUserChats();
-  // }, [user, dispatch]);
+          return {
+            id: chat._id.toString(),
+            name: otherParticipant?.name || "Unknown",
+            avatar: otherParticipant?.avatar || "",
+            lastMessage: chat.lastMessage || "",
+            timestamp: chat.timestamp ? formatTimestamp(chat.timestamp) : "",
+            unreadCount: participantmeta.unreadCount || 0,
+            status: chat.status ||otherParticipant?.status || "offline",
+            userId: otherParticipant?.supabaseId,
+          };
+        });
+        console.log("formated chats", formattedChats);
+        dispatch(setChats(formattedChats));
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+      }
+    };
+
+    fetchUserChats();
+  }, [user, dispatch]);
 
   // Helper function for timestamp
   const formatTimestamp = (date) => {

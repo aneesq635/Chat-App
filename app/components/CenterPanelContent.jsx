@@ -70,46 +70,56 @@ function CenterPanelContent({ user, onSelectProfile }) {
     return () => clearTimeout(delaySearch);
   }, [searchTerm, activeNav]);
   // chat system
-  
-  // const handleStartChat = async (contact) => {
-  //   try {
-  //     // Check if chat already exists or create new one
-  //     console.log("userid and supabaseid", user.id, contact.supabaseId);
-  //     const response = await fetch("/api/chats/create", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         participants: [user.id, contact.supabaseId],
-  //       }),
-  //     });
 
-  //     const { chat } = await response.json();
+  const handleStartChat = async (contact) => {
+    try {
+      // Check if chat already exists or create new one
+      console.log("userid and supabaseid", user.id, contact.supabaseId);
+      const response = await fetch("/api/chat/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participants: [user.id, contact.supabaseId],
+        }),
+      });
 
-  //     // Add to chats list if not already there
-  //     const chatExists = chats.find((c) => c.id === chat._id.toString());
+      const { chat } = await response.json();
 
-  //     if (!chatExists) {
-  //       const newChat = {
-  //         id: chat._id.toString(),
-  //         name: contact.name,
-  //         avatar: contact.avatar,
-  //         lastMessage: "",
-  //         timestamp: "Now",
-  //         unreadCount: 0,
-  //         status: "offline",
-  //         userId: contact.supabaseId, // Store the other user's ID
-  //       };
+      // Add to chats list if not already there
+      const chatId = chat._id.toString();
+      const chatExists = chats.some((c) => c.id === chatId);
 
-  //       dispatch(setChats([newChat, ...chats]));
-  //     }
+      const meta = chat.participantMeta?.[contact.supabaseId] || {
+        unreadCount: 0,
+      };
 
-  //     // Switch to chats tab and select this chat
-  //     dispatch(setActiveNav("chats"));
-  //     dispatch(setSelectedChatId(chat._id.toString()));
-  //   } catch (error) {
-  //     console.error("Error starting chat:", error);
-  //   }
-  // };
+      // const status = await fetch(`/api/users/status/${contact.supabaseId}`);
+      // const statusData = await status.json();
+      // console.log("statusData", statusData);
+      // contact.status = statusData.status || "offline";
+
+      if (!chatExists) {
+        const newChat = {
+          id: chat._id.toString(),
+          name: contact.name,
+          avatar: contact.avatar,
+          userId: contact.supabaseId, // Store the other user's ID
+          lastMessage: chat.lastMessage.text,
+          timestamp: chat.lastMessage.timestamp,
+          unreadCount: meta.unreadCount,
+          status: contact.status,
+        };
+
+        dispatch(setChats([newChat, ...chats]));
+      }
+
+      // Switch to chats tab and select this chat
+      dispatch(setActiveNav("chats"));
+      dispatch(setSelectedChatId(chat._id.toString()));
+    } catch (error) {
+      console.error("Error starting chat:", error);
+    }
+  };
 
   const searchUsers = async (searchTerm) => {
     if (!searchTerm || searchTerm.trim() === "") {
