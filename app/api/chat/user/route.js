@@ -12,47 +12,36 @@ export async function GET(req) {
     const users = db.collection("users");
     const chats = await db
       .collection("chat")
-      .find({ participants: userId })
-      .sort({ lastMessage: { timestamp: -1 } })
+      .find({ participant: userId })
+      .sort({ "lastMessage.timestamp": -1 })
       .toArray();
 
     const chatsArray = await Promise.all(
       chats.map(async (chat) => {
-        const otherParticipantid = chat.participants.filter(
+        const otherParticipantid = chat.participant.filter(
           (id) => id !== userId,
         );
-        const participantDetails = await users
-          .find(
-            { supabaseId: otherParticipantid },
-            {
-              projection: {
-                supabaseId: 1,
-                userId: 1,
-                name: 1,
-                email: 1,
-                avatar: 1,
-                bio: 1,
-                status: 1,
-                lastSeen: 1,
-              },
-            },
-          )
-          .toArray();
+        console.log("otherParticipantid", otherParticipantid);
+        const participantDetails = await users.findOne(
+          { supabaseId: otherParticipantid[0] },
+          { projection: { name: 1, avatar: 1, supabaseId: 1, userId:1, status: 1 , bio:1, _id:0, email:1} },
+        );
 
         return {
           _id: chat._id,
-          participants: chat.participants,
+          participant: chat.participant,
           participantDetails,
-          participantmeta: chat.participantmeta[otherParticipantid],
-          lastMessage: chat.lastMessage.text,
-          timestamp: chat.lastMessage.timestamp,
+          participantMeta: chat.participantMeta,
+          lastMessage: chat.lastMessage,
           status: participantDetails.status,
         };
       }),
     );
+
+    console.log("chatsArray", chatsArray);
     return NextResponse.json({ success: true, chats: chatsArray });
   } catch (err) {
     console.log("error occur while fetching chats", err);
-    return NextResponse.json({ success: true, error: err });
+    return NextResponse.json({ success: false, error: err });
   }
 }

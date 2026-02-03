@@ -86,6 +86,7 @@ function CenterPanelContent({ user, onSelectProfile }) {
       const { chat } = await response.json();
 
       // Add to chats list if not already there
+      console.log("chat created/fetched:", chat);
       const chatId = chat._id.toString();
       const chatExists = chats.some((c) => c.id === chatId);
 
@@ -267,7 +268,7 @@ function CenterPanelContent({ user, onSelectProfile }) {
 
         {activeNav === "contacts" &&
           contacts.map((contact) => (
-            <div>
+            <>
               <button
                 key={contact.id}
                 className="w-full flex items-center gap-4 p-4 hover:bg-indigo-50 rounded-2xl transition-all border border-transparent hover:border-indigo-100 mb-2 text-left"
@@ -291,7 +292,7 @@ function CenterPanelContent({ user, onSelectProfile }) {
               >
                 Chat
               </button>
-            </div>
+            </>
           ))}
 
         {activeNav === "search" &&

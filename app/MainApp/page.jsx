@@ -39,27 +39,22 @@ const mainapp = () => {
       if (!user?.id) return;
 
       try {
-        const response = await fetch(`/api/chats/user?userId=${user.id}`);
+        const response = await fetch(`/api/chat/user?userId=${user.id}`);
         const { chats: userChats } = await response.json();
         console.log("fetching chats", userChats);
 
         const formattedChats = userChats.map((chat) => {
-          // Get the other participant (not current user)
-          const otherParticipant = chat.participantDetails.find(
-            (p) => p.supabaseId !== user.id,
-          );
-
-        
+          const otherid = chat.participant.filter((id) => id !== user.id);
 
           return {
             id: chat._id.toString(),
-            name: otherParticipant?.name || "Unknown",
-            avatar: otherParticipant?.avatar || "",
-            lastMessage: chat.lastMessage || "",
-            timestamp: chat.timestamp ? formatTimestamp(chat.timestamp) : "",
-            unreadCount: participantmeta.unreadCount || 0,
-            status: chat.status ||otherParticipant?.status || "offline",
-            userId: otherParticipant?.supabaseId,
+            name: chat.participantDetails?.name || "Unknown",
+            avatar: chat.participantDetails?.avatar || "",
+            lastMessage: chat.lastMessage.text || "",
+            timestamp: chat.lastMessage.timestamp ? formatTimestamp(chat.lastMessage.timestamp) : "",
+            unreadCount: chat.participantMeta[otherid[0]] || 0,
+            status: chat.status ||chat.participantDetails?.status || "offline",
+            userId: chat.participantDetails?.userId,
           };
         });
         console.log("formated chats", formattedChats);

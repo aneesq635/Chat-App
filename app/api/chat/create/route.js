@@ -4,7 +4,8 @@ import clientPromise from "../../../lib/mongoPromise";
 
 export async function POST(request) {
   try {
-    const { participantsID, type = "direct" } = await request.json();
+    const { participants: participantsID, type = "direct" } = await request.json();
+    console.log("Creating chat with participants:", participantsID);  
     const client = await clientPromise;
     const db = client.db("NexTalk");
     // const users = db.collection("users");
@@ -22,7 +23,7 @@ export async function POST(request) {
     }
 
     const participantMeta = {};
-    participantsID.foreach((supabaseId) => {
+    participantsID.forEach((supabaseId) => {
       participantMeta[supabaseId] = {
         unreadCount: 0,
       };
