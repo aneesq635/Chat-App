@@ -16,6 +16,7 @@ import {
   setIsCalling,
 } from "../components/MainSlice";
 import { useSelector, useDispatch } from "react-redux";
+import { getSocket } from "../components/useSocket";
 
 const mainapp = () => {
   // all states
@@ -31,9 +32,38 @@ const mainapp = () => {
   const { user } = useAuth();
   const avatar_url = user?.user_metadata?.avatar_url;
   console.log("user", user);
+  const socket = getSocket();
 
-  // function and useEffects
-  // Fetch user chats when component mounts or user changes
+  // Replace the entire useEffect for socket connection with this:
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleConnect = () => {
+      console.log("connected to socket", socket.id);
+      // Register user with their ID
+      if (user?.id) {
+        socket.emit("register_user", user.id);
+      }
+    };
+
+    const handleDisconnect = () => {
+      console.log("disconnected from socket", socket.id);
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    // If already connected, register immediately
+    if (socket.connected && user?.id) {
+      socket.emit("register_user", user.id);
+    }
+
+    return () => {
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+    };
+  }, [user?.id]); 
+
   useEffect(() => {
     const fetchUserChats = async () => {
       if (!user?.id) return;
@@ -42,7 +72,7 @@ const mainapp = () => {
         const response = await fetch(`/api/chat/user?userId=${user.id}`);
         const { chats: userChats } = await response.json();
         console.log("fetching chats", userChats);
-
+        
         const formattedChats = userChats.map((chat) => {
           const otherid = chat.participant.filter((id) => id !== user.id);
 
@@ -51,10 +81,12 @@ const mainapp = () => {
             name: chat.participantDetails?.name || "Unknown",
             avatar: chat.participantDetails?.avatar || "",
             lastMessage: chat.lastMessage.text || "",
-            timestamp: chat.lastMessage.timestamp ? formatTimestamp(chat.lastMessage.timestamp) : "",
+            timestamp: chat.lastMessage.timestamp
+              ? formatTimestamp(chat.lastMessage.timestamp)
+              : "",
             unreadCount: chat.participantMeta[otherid[0]] || 0,
-            status: chat.status ||chat.participantDetails?.status || "offline",
-            userId: chat.participantDetails?.userId,
+            status: chat.status || chat.participantDetails?.status || "offline",
+            userId: chat.participantDetails?.supabaseId,
           };
         });
         console.log("formated chats", formattedChats);
@@ -67,6 +99,25 @@ const mainapp = () => {
     fetchUserChats();
   }, [user, dispatch]);
 
+  useEffect(() => {
+    const fetchChatsHistory = async () => {
+      if (user?.id && chats.length == 0) return;
+      const chatsIDs = chats.map((c) => {
+        return c.id;
+      });
+      console.log("chatsIDS", chatsIDs);
+      // try {
+      //   const response = await fetch(
+      //     `/api/conversationMessages/user?userId=${user.id}`,
+      //   );
+      //   const data = await response.json();
+      //   console.log("data of conversation messages", data);
+      // } catch (err) {
+      //   console.error("Error occur while fetching the chats history", err);
+      // }
+    };
+    fetchChatsHistory();
+  }, [user, dispatch, chats]);
   // Helper function for timestamp
   const formatTimestamp = (date) => {
     const now = new Date();

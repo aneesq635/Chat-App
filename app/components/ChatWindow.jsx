@@ -6,6 +6,7 @@ const { Icons } = CONSTANTS;
 import { Avatar } from "./Utilities";
 // import { useSocket } from "../lib/hook/useSocket";
 import { useAuth } from "./AuthContext";
+import { getSocket } from "./useSocket";
 
 function ChatWindow({ chat, selectedChatId, onStartCall }) {
   const [inputText, setInputText] = useState("");
@@ -13,62 +14,18 @@ function ChatWindow({ chat, selectedChatId, onStartCall }) {
   const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef(null);
   const dispatch = useDispatch();
-  
+  const socket = getSocket();
+
   const conversationMessages = useSelector(
-    (state) => state.main.conversationMessages
+    (state) => state.main.conversationMessages,
   );
-  
+
   const chatMessages = conversationMessages[selectedChatId] || [];
-  
+
   // Get current user from Redux or context (you need to pass this)
   // For now, assuming chat.userId is the CURRENT user
-  const {user} = useAuth()
+  const { user } = useAuth();
   const currentUserId = user?.id;
-  
-
-  
-
-  // Fetch conversation history
-  // useEffect(() => {
-  //   if (!selectedChatId) return;
-    
-  //   const fetchConversationHistory = async () => {
-  //     setIsLoading(true);
-  //     try {
-  //       console.log("📥 Fetching conversation history for:", selectedChatId);
-  //       const res = await fetch(`/api/conversation/${selectedChatId}`);
-  //       const data = await res.json();
-        
-  //       console.log("📦 Received data:", data);
-        
-  //       if (data.success && data.messages) {
-  //         // Format messages: compare senderId with CURRENT user
-  //         const formattedMessages = data.messages.map(m => {
-  //           const isMyMessage = m.senderId === currentUserId;
-  //           console.log(`Message from ${m.senderId}: ${isMyMessage ? 'ME' : 'OTHER'}`);
-            
-  //           return {
-  //             ...m,
-  //             sender: isMyMessage ? "user" : "bot"
-  //           };
-  //         });
-          
-  //         dispatch(setConversationMessages({ 
-  //           chatId: selectedChatId, 
-  //           messages: formattedMessages 
-  //         }));
-  //       }
-  //     } catch (error) {
-  //       console.error("❌ Error fetching conversation history:", error);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   fetchConversationHistory();
-  // }, [selectedChatId, dispatch, currentUserId]);
-
-  
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -80,20 +37,55 @@ function ChatWindow({ chat, selectedChatId, onStartCall }) {
   // Handle typing indicator
   const handleInputChange = (e) => {
     setInputText(e.target.value);
-    
-    if (socket && selectedChatId) {
-      socket.emit("typing", {
-        chatId: selectedChatId,
-        userId: currentUserId,
-        isTyping: e.target.value.length > 0
-      });
-    }
+
+    // if (socket && selectedChatId) {
+    //   socket.emit("typing", {
+    //     chatId: selectedChatId,
+    //     userId: currentUserId,
+    //     isTyping: e.target.value.length > 0
+    //   });
+    // }
   };
 
   // Send message function
-  const sendMessage = (inputText)=>{
+  const sendMessage = (inputText) => {
     console.log("Send message:", inputText);
+    const newMessage = {
+      sender_id: currentUserId,
+      reciever_id: chat.userId,
+      text: inputText,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+    dispatch(
+      addMessageToHistory({ chatId: selectedChatId, message: newMessage }),
+    );
+    console.log("sending to the server", socket)
+    socket.emit("send_message", {
+      chatId: selectedChatId,
+      message: newMessage,
+    });
+   
   };
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleReceiveMessage = (data) => {
+      console.log("Message received from server:", data);
+      if (data.chatId === selectedChatId) {
+        dispatch(
+          addMessageToHistory({ chatId: selectedChatId, message: data.message }),
+        );
+      }
+    };
+    socket.on("recieve_message", handleReceiveMessage);
+
+    return () => {
+      socket.off("recieve_message", handleReceiveMessage);
+    };
+  }, [socket, selectedChatId, currentUserId]);
 
   const handleSend = () => {
     if (inputText.trim()) {
